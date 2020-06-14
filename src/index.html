@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en-us">
+    <h1>OpenEXR Header</h1>
+    <style>
+        #message {
+            font-family: 'Courier New', Courier, monospace;
+        }
+    </style>
+    <body>
+        <input id="fileupload" type=file title="Choose a file" />
+        <div id="message"></div>
+    </body>
+    <script>
+        var Module = {};
+        Module["preInit"] = function() {
+            FS.mkdir('/images');
+            FS.mount(IDBFS, {}, '/images');
+            FS.syncfs(true, function(err) {
+                if (err)
+                    console.error(err);
+            });
+        }
+
+
+        function useFileInput(fileInput) {
+            if (fileInput.files.length == 0)
+                return;
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            console.log(Module);
+            console.log(file);
+
+            reader.onload = function(event) {
+                const data = new Uint8Array(event.target.result);
+                console.log("Create Data File")
+                try {
+                    FS.stat('/images/' + file.name);
+                    FS.unlink('/images/' + file.name);
+                } catch {
+                    console.log("File did not exist: OK")
+                }
+                FS.createDataFile('/images/', file.name, data, true, true, true);
+
+                // WASM Call
+                let result  = Module.getHeaderInfo('/images/' + file.name)
+
+                result = result.replace(/(?:\r\n|\r|\n)/g, '<br>')
+                document.querySelector("#message")
+                    .innerHTML = result;
+            }
+            reader.readAsArrayBuffer(file);
+        }
+
+        document.querySelector("#fileupload")
+            .addEventListener('change', (e) => useFileInput(e.target));
+    </script>
+    <script src="openexr.js"></script>
+</html>
+
+
